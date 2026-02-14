@@ -36,6 +36,7 @@ enum custom_keycodes {
 #define SCROLL_LAYER      4
 #define GESTURE_LAYER     4
 #define GESTURE_THRESHOLD 24
+#define HOLD_TRIGGER_MS   150
 
 static bool    gesture_hold  = false;
 static bool    gesture_fired = false;
@@ -43,6 +44,11 @@ static int16_t gesture_x     = 0;
 static int16_t gesture_y     = 0;
 static uint8_t gesture_mode  = 0;
 static bool    mac_mod_hold  = false;
+static bool    gesture_pressed      = false;
+static uint8_t gesture_pending_mode = 0;
+static uint32_t gesture_pressed_at  = 0;
+static bool    mac_mod_pressed      = false;
+static uint32_t mac_mod_pressed_at  = 0;
 
 enum {
     GESTURE_MODE_NONE = 0,
@@ -52,6 +58,19 @@ enum {
 
 static inline int16_t iabs16(int16_t v) {
     return v < 0 ? -v : v;
+}
+
+static void update_hold_states(void) {
+    if (gesture_pressed && !gesture_hold && timer_elapsed32(gesture_pressed_at) >= HOLD_TRIGGER_MS) {
+        gesture_hold  = true;
+        gesture_fired = false;
+        gesture_x     = 0;
+        gesture_y     = 0;
+        gesture_mode  = gesture_pending_mode;
+    }
+    if (mac_mod_pressed && !mac_mod_hold && timer_elapsed32(mac_mod_pressed_at) >= HOLD_TRIGGER_MS) {
+        mac_mod_hold = true;
+    }
 }
 
 // clang-format off
@@ -102,12 +121,16 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
         case GEST_MO:
             if (record->event.pressed) {
-                gesture_hold  = true;
+                gesture_pressed      = true;
+                gesture_pending_mode = GESTURE_MODE_SWITCH;
+                gesture_pressed_at   = timer_read32();
+                gesture_hold  = false;
                 gesture_fired = false;
                 gesture_x     = 0;
                 gesture_y     = 0;
-                gesture_mode  = GESTURE_MODE_SWITCH;
+                gesture_mode  = GESTURE_MODE_NONE;
             } else {
+                gesture_pressed = false;
                 gesture_hold  = false;
                 gesture_fired = false;
                 gesture_x     = 0;
@@ -117,12 +140,16 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return false;
         case GEST_WM:
             if (record->event.pressed) {
-                gesture_hold  = true;
+                gesture_pressed      = true;
+                gesture_pending_mode = GESTURE_MODE_WINDOW;
+                gesture_pressed_at   = timer_read32();
+                gesture_hold  = false;
                 gesture_fired = false;
                 gesture_x     = 0;
                 gesture_y     = 0;
-                gesture_mode  = GESTURE_MODE_WINDOW;
+                gesture_mode  = GESTURE_MODE_NONE;
             } else {
+                gesture_pressed = false;
                 gesture_hold  = false;
                 gesture_fired = false;
                 gesture_x     = 0;
@@ -131,7 +158,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             }
             return false;
         case MAC_MOD:
-            mac_mod_hold = record->event.pressed;
+            if (record->event.pressed) {
+                mac_mod_pressed    = true;
+                mac_mod_pressed_at = timer_read32();
+                mac_mod_hold       = false;
+            } else {
+                mac_mod_pressed = false;
+                mac_mod_hold    = false;
+            }
             return false;
         case WIN_PREV:
             if (record->event.pressed) {
@@ -173,6 +207,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 }
 
 report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
+    update_hold_states();
+
     if (!(gesture_hold && get_highest_layer(layer_state) == GESTURE_LAYER)) {
         return mouse_report;
     }
@@ -257,7 +293,7 @@ void oledkit_render_info_user(void) {
 #endif
 
 #ifdef POINTING_DEVICE_AUTO_MOUSE_ENABLE
-void pointing_device_init_user(void) {
+void keyboard_post_init_user(void) {
     set_auto_mouse_enable(true);
 }
 #endif
