@@ -31,10 +31,12 @@ enum custom_keycodes {
     WIN_DESK,
     GEST_WM,
     MAC_MOD,
+    HSCRL_MO,
 };
 
 #define SCROLL_LAYER      4
 #define GESTURE_LAYER     4
+#define MOUSE_LAYER       3
 #define GESTURE_THRESHOLD 24
 #define HOLD_TRIGGER_MS   150
 
@@ -49,6 +51,8 @@ static uint8_t gesture_pending_mode = 0;
 static uint32_t gesture_pressed_at  = 0;
 static bool    mac_mod_pressed      = false;
 static uint32_t mac_mod_pressed_at  = 0;
+static bool    hscroll_hold = false;
+static keyball_scrollsnap_mode_t hscroll_prev_snap = KEYBALL_SCROLLSNAP_MODE_VERTICAL;
 
 enum {
     GESTURE_MODE_NONE = 0,
@@ -119,6 +123,48 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
+        case SCRL_MO:
+            // Allow momentary scroll only on mouse layer.
+            if (get_highest_layer(layer_state) == MOUSE_LAYER) {
+                return true; // Let keyball core handle press/release.
+            }
+            keyball_set_scroll_mode(false);
+            return false;
+        case SCRL_TO:
+            // Allow toggle scroll only on mouse layer.
+            if (get_highest_layer(layer_state) == MOUSE_LAYER) {
+                return true; // Let keyball core toggle on/off.
+            }
+            keyball_set_scroll_mode(false);
+            return false;
+        case HSCRL_MO:
+            // Hold-to-horizontal-scroll on mouse layer only.
+            if (get_highest_layer(layer_state) != MOUSE_LAYER) {
+                keyball_set_scroll_mode(false);
+                hscroll_hold = false;
+                return false;
+            }
+            if (record->event.pressed) {
+                hscroll_prev_snap = keyball_get_scrollsnap_mode();
+                keyball_set_scrollsnap_mode(KEYBALL_SCROLLSNAP_MODE_HORIZONTAL);
+                keyball_set_scroll_mode(true);
+                hscroll_hold = true;
+            } else {
+                keyball_set_scroll_mode(false);
+                if (hscroll_hold) {
+                    keyball_set_scrollsnap_mode(hscroll_prev_snap);
+                }
+                hscroll_hold = false;
+            }
+            return false;
+        case SCRL_DVI:
+        case SCRL_DVD:
+        case SSNP_HOR:
+        case SSNP_VRT:
+        case SSNP_FRE:
+            (void)record;
+            keyball_set_scroll_mode(false);
+            return false;
         case GEST_MO:
             if (record->event.pressed) {
                 gesture_pressed      = true;
@@ -276,8 +322,8 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 }
 
 layer_state_t layer_state_set_user(layer_state_t state) {
-    // Auto enable scroll mode when the highest layer is layer 4 (0-based).
-    keyball_set_scroll_mode(get_highest_layer(state) == SCROLL_LAYER);
+    // Keep scroll mode disabled.
+    keyball_set_scroll_mode(false);
     return state;
 }
 

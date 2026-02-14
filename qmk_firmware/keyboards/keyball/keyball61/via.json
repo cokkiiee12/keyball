@@ -64,6 +64,12 @@
       "title": "Mac Gesture Modifier",
       "shortName": "MACMOD",
       "code": "0x7C09"
+    },
+    {
+      "name": "HSCRL_MO",
+      "title": "Hold Horizontal Scroll",
+      "shortName": "HSCRL",
+      "code": "0x7C0A"
     }
   ],
   "layouts" : {
