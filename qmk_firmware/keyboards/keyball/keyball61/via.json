@@ -1,9 +1,71 @@
-{
+﻿{
   "name": "Keyball61",
   "vendorId": "0x5957",
   "productId": "0x0100",
   "matrix": { "rows": 10, "cols": 8 },
   "lighting": "qmk_rgblight",
+  "customKeycodes": [
+    {
+      "name": "GEST_MO",
+      "title": "Gesture Hold",
+      "shortName": "GEST",
+      "code": "0x7C00"
+    },
+    {
+      "name": "WIN_PREV",
+      "title": "Win Prev (Alt+Shift+Tab)",
+      "shortName": "WPREV",
+      "code": "0x7C01"
+    },
+    {
+      "name": "WIN_NEXT",
+      "title": "Win Next (Alt+Tab)",
+      "shortName": "WNEXT",
+      "code": "0x7C02"
+    },
+    {
+      "name": "WIN_LEFT",
+      "title": "Snap Left (Win+Left)",
+      "shortName": "WLEFT",
+      "code": "0x7C03"
+    },
+    {
+      "name": "WIN_RIGHT",
+      "title": "Snap Right (Win+Right)",
+      "shortName": "WRGHT",
+      "code": "0x7C04"
+    },
+    {
+      "name": "WIN_MAX",
+      "title": "Maximize (Win+Up)",
+      "shortName": "WMAX",
+      "code": "0x7C05"
+    },
+    {
+      "name": "WIN_MIN",
+      "title": "Restore/Min (Win+Down)",
+      "shortName": "WMIN",
+      "code": "0x7C06"
+    },
+    {
+      "name": "WIN_DESK",
+      "title": "Show Desktop (Win+D)",
+      "shortName": "WDESK",
+      "code": "0x7C07"
+    },
+    {
+      "name": "GEST_WM",
+      "title": "Gesture Hold (Window Manage)",
+      "shortName": "GWM",
+      "code": "0x7C08"
+    },
+    {
+      "name": "MAC_MOD",
+      "title": "Mac Gesture Modifier",
+      "shortName": "MACMOD",
+      "code": "0x7C09"
+    }
+  ],
   "layouts" : {
     "labels": [
       [ "Ball availability", "None", "Right", "Left", "Dual" ]

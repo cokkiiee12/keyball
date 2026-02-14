@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright 2022 @Yowkees
 Copyright 2022 MURAOKA Taro (aka KoRoN, @kaoriya)
 
@@ -19,6 +19,40 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include QMK_KEYBOARD_H
 
 #include "quantum.h"
+
+enum custom_keycodes {
+    GEST_MO = KEYBALL_SAFE_RANGE,
+    WIN_PREV,
+    WIN_NEXT,
+    WIN_LEFT,
+    WIN_RIGHT,
+    WIN_MAX,
+    WIN_MIN,
+    WIN_DESK,
+    GEST_WM,
+    MAC_MOD,
+};
+
+#define SCROLL_LAYER      4
+#define GESTURE_LAYER     4
+#define GESTURE_THRESHOLD 24
+
+static bool    gesture_hold  = false;
+static bool    gesture_fired = false;
+static int16_t gesture_x     = 0;
+static int16_t gesture_y     = 0;
+static uint8_t gesture_mode  = 0;
+static bool    mac_mod_hold  = false;
+
+enum {
+    GESTURE_MODE_NONE = 0,
+    GESTURE_MODE_SWITCH,
+    GESTURE_MODE_WINDOW,
+};
+
+static inline int16_t iabs16(int16_t v) {
+    return v < 0 ? -v : v;
+}
 
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -47,6 +81,14 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   ),
 
   [3] = LAYOUT_universal(
+    SSNP_FRE , KC_F1    , KC_F2    , KC_F3    , KC_F4    , KC_F5    ,                                  KC_F6    , KC_F7    , KC_F8    , KC_F9    , KC_F10   , KC_F11   ,
+    SSNP_VRT , _______  , KC_7     , KC_8     , KC_9     , _______  ,                                  _______  , KC_LEFT  , KC_UP    , KC_RGHT  , _______  , KC_F12   ,
+    SSNP_HOR , _______  , KC_4     , KC_5     , KC_6     ,S(KC_SCLN),                                  KC_PGUP  , KC_BTN1  , KC_DOWN  , KC_BTN2  , KC_BTN3  , _______  ,
+    _______  , _______  , KC_1     , KC_2     , KC_3     ,S(KC_MINS), S(KC_8)  ,            S(KC_9)  , KC_PGDN  , _______  , _______  , _______  , _______  , _______  ,
+    _______  , _______  , KC_0     , KC_DOT   , _______  , _______  , _______  ,             KC_DEL  , _______  , _______  , _______  , _______  , _______  , _______
+  ),
+
+  [4] = LAYOUT_universal(
     RGB_TOG  , AML_TO   , AML_I50  , AML_D50  , _______  , _______  ,                                  RGB_M_P  , RGB_M_B  , RGB_M_R  , RGB_M_SW , RGB_M_SN , RGB_M_K  ,
     RGB_MOD  , RGB_HUI  , RGB_SAI  , RGB_VAI  , _______  , _______  ,                                  RGB_M_X  , RGB_M_G  , RGB_M_T  , RGB_M_TW , _______  , _______  ,
     RGB_RMOD , RGB_HUD  , RGB_SAD  , RGB_VAD  , _______  , _______  ,                                  CPI_D1K  , CPI_D100 , CPI_I100 , CPI_I1K  , KBC_SAVE , KBC_RST  ,
@@ -56,9 +98,150 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 // clang-format on
 
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    switch (keycode) {
+        case GEST_MO:
+            if (record->event.pressed) {
+                gesture_hold  = true;
+                gesture_fired = false;
+                gesture_x     = 0;
+                gesture_y     = 0;
+                gesture_mode  = GESTURE_MODE_SWITCH;
+            } else {
+                gesture_hold  = false;
+                gesture_fired = false;
+                gesture_x     = 0;
+                gesture_y     = 0;
+                gesture_mode  = GESTURE_MODE_NONE;
+            }
+            return false;
+        case GEST_WM:
+            if (record->event.pressed) {
+                gesture_hold  = true;
+                gesture_fired = false;
+                gesture_x     = 0;
+                gesture_y     = 0;
+                gesture_mode  = GESTURE_MODE_WINDOW;
+            } else {
+                gesture_hold  = false;
+                gesture_fired = false;
+                gesture_x     = 0;
+                gesture_y     = 0;
+                gesture_mode  = GESTURE_MODE_NONE;
+            }
+            return false;
+        case MAC_MOD:
+            mac_mod_hold = record->event.pressed;
+            return false;
+        case WIN_PREV:
+            if (record->event.pressed) {
+                tap_code16(S(A(KC_TAB)));
+            }
+            return false;
+        case WIN_NEXT:
+            if (record->event.pressed) {
+                tap_code16(A(KC_TAB));
+            }
+            return false;
+        case WIN_LEFT:
+            if (record->event.pressed) {
+                tap_code16(G(KC_LEFT));
+            }
+            return false;
+        case WIN_RIGHT:
+            if (record->event.pressed) {
+                tap_code16(G(KC_RGHT));
+            }
+            return false;
+        case WIN_MAX:
+            if (record->event.pressed) {
+                tap_code16(G(KC_UP));
+            }
+            return false;
+        case WIN_MIN:
+            if (record->event.pressed) {
+                tap_code16(G(KC_DOWN));
+            }
+            return false;
+        case WIN_DESK:
+            if (record->event.pressed) {
+                tap_code16(G(KC_D));
+            }
+            return false;
+    }
+    return true;
+}
+
+report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
+    if (!(gesture_hold && get_highest_layer(layer_state) == GESTURE_LAYER)) {
+        return mouse_report;
+    }
+
+    // In scroll mode movement may come as h/v; in cursor mode as x/y.
+    gesture_x += mouse_report.x + mouse_report.h;
+    gesture_y += mouse_report.y + mouse_report.v;
+
+    // While judging a gesture, suppress normal pointer/scroll output.
+    mouse_report.x = 0;
+    mouse_report.y = 0;
+    mouse_report.h = 0;
+    mouse_report.v = 0;
+
+    if (!gesture_fired && (iabs16(gesture_x) >= GESTURE_THRESHOLD || iabs16(gesture_y) >= GESTURE_THRESHOLD)) {
+        if (gesture_mode == GESTURE_MODE_WINDOW) {
+            if (iabs16(gesture_x) > iabs16(gesture_y)) {
+                if (gesture_x > 0) {
+                    tap_code16(G(KC_RGHT));
+                } else {
+                    tap_code16(G(KC_LEFT));
+                }
+            } else {
+                if (gesture_y > 0) {
+                    tap_code16(G(KC_DOWN));
+                } else {
+                    tap_code16(G(KC_UP));
+                }
+            }
+        } else {
+            if (iabs16(gesture_x) > iabs16(gesture_y)) {
+                if (gesture_x > 0) {
+                    if (mac_mod_hold) {
+                        tap_code16(C(KC_RGHT));
+                    } else {
+                        tap_code16(A(KC_TAB));
+                    }
+                } else {
+                    if (mac_mod_hold) {
+                        tap_code16(C(KC_LEFT));
+                    } else {
+                        tap_code16(S(A(KC_TAB)));
+                    }
+                }
+            } else {
+                if (gesture_y > 0) {
+                    if (mac_mod_hold) {
+                        tap_code16(C(KC_DOWN));
+                    } else {
+                        tap_code16(G(KC_DOWN));
+                    }
+                } else {
+                    if (mac_mod_hold) {
+                        tap_code16(C(KC_UP));
+                    } else {
+                        tap_code16(G(KC_UP));
+                    }
+                }
+            }
+        }
+        gesture_fired = true;
+    }
+
+    return mouse_report;
+}
+
 layer_state_t layer_state_set_user(layer_state_t state) {
-    // Auto enable scroll mode when the highest layer is 3
-    keyball_set_scroll_mode(get_highest_layer(state) == 3);
+    // Auto enable scroll mode when the highest layer is layer 4 (0-based).
+    keyball_set_scroll_mode(get_highest_layer(state) == SCROLL_LAYER);
     return state;
 }
 
