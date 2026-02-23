@@ -35,3 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define TAP_CODE_DELAY 5
 #define DYNAMIC_KEYMAP_LAYER_COUNT 7
+
+// Lower scroll thresholds to reduce "dead zone" feeling while KC_MY_SCR is held.
+#define TAKASHI_SCROLL_V_THRESHOLD 20
+#define TAKASHI_SCROLL_H_THRESHOLD 20
