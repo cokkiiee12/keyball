@@ -263,7 +263,7 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
                 if (my_abs(current_y) * 2 > my_abs(current_x)) {
 
                     scroll_v_mouse_interval_counter += current_y;
-                    while (my_abs(scroll_v_mouse_interval_counter) > scroll_v_threshold) {
+                    while (my_abs(scroll_v_mouse_interval_counter) >= scroll_v_threshold) {
                         if (scroll_v_mouse_interval_counter < 0) {
                             scroll_v_mouse_interval_counter += scroll_v_threshold;
                             rep_v += scroll_v_threshold;
@@ -277,7 +277,7 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 
                     scroll_h_mouse_interval_counter += current_x;
 
-                    while (my_abs(scroll_h_mouse_interval_counter) > scroll_h_threshold) {
+                    while (my_abs(scroll_h_mouse_interval_counter) >= scroll_h_threshold) {
                         if (scroll_h_mouse_interval_counter < 0) {
                             scroll_h_mouse_interval_counter += scroll_h_threshold;
                             rep_h += scroll_h_threshold;
