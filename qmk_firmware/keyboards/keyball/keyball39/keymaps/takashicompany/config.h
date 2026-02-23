@@ -37,5 +37,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define DYNAMIC_KEYMAP_LAYER_COUNT 7
 
 // Lower scroll thresholds to reduce "dead zone" feeling while KC_MY_SCR is held.
-#define TAKASHI_SCROLL_V_THRESHOLD 10
-#define TAKASHI_SCROLL_H_THRESHOLD 10
+#define TAKASHI_SCROLL_V_THRESHOLD 2
+#define TAKASHI_SCROLL_H_THRESHOLD 2
+
+// Runtime tuning for KC_MY_SCR scroll threshold via KB(16)/KB(17).
+#define TAKASHI_SCROLL_THRESHOLD_STEP 1
+#define TAKASHI_SCROLL_THRESHOLD_MIN 1
+#define TAKASHI_SCROLL_THRESHOLD_MAX 50

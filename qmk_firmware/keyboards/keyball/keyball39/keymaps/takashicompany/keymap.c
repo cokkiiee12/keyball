@@ -33,6 +33,11 @@ enum custom_keycodes {
     KC_SCROLL_DIR_H,
 };
 
+// Use free Keyball keycode slots for runtime tuning from VIA:
+// KB(16): decrease threshold (more sensitive), KB(17): increase threshold.
+#define KB_SCROLL_THRESHOLD_DEC (QK_KB_0 + 16)
+#define KB_SCROLL_THRESHOLD_INC (QK_KB_0 + 17)
+
 
 enum click_state {
     NONE = 0,
@@ -46,9 +51,12 @@ typedef union {
   uint32_t raw;
   struct {
     // int16_t to_clickable_time; // // この秒数(千分の一秒)、WAITING状態ならクリックレイヤーが有効になる。  For this number of seconds (milliseconds), if in WAITING state, the click layer is activated.
-    int16_t to_clickable_movement;
-    bool mouse_scroll_v_reverse;
-    bool mouse_scroll_h_reverse;
+    uint32_t to_clickable_movement : 8;
+    uint32_t mouse_scroll_v_reverse : 1;
+    uint32_t mouse_scroll_h_reverse : 1;
+    uint32_t scroll_v_threshold : 8;
+    uint32_t scroll_h_threshold : 8;
+    uint32_t reserved : 6;
   };
 } user_config_t;
 
@@ -77,16 +85,49 @@ const uint16_t ignore_disable_mouse_layer_keys[] = { KC_LGUI, KC_LCTL, KC_LALT, 
 
 int16_t mouse_movement;
 
+static void adjust_scroll_threshold(int8_t delta) {
+    int16_t next_v = scroll_v_threshold + delta;
+    int16_t next_h = scroll_h_threshold + delta;
+
+    if (next_v < TAKASHI_SCROLL_THRESHOLD_MIN) {
+        next_v = TAKASHI_SCROLL_THRESHOLD_MIN;
+    } else if (next_v > TAKASHI_SCROLL_THRESHOLD_MAX) {
+        next_v = TAKASHI_SCROLL_THRESHOLD_MAX;
+    }
+
+    if (next_h < TAKASHI_SCROLL_THRESHOLD_MIN) {
+        next_h = TAKASHI_SCROLL_THRESHOLD_MIN;
+    } else if (next_h > TAKASHI_SCROLL_THRESHOLD_MAX) {
+        next_h = TAKASHI_SCROLL_THRESHOLD_MAX;
+    }
+
+    scroll_v_threshold = next_v;
+    scroll_h_threshold = next_h;
+}
+
 void eeconfig_init_user(void) {
     user_config.raw = 0;
     user_config.to_clickable_movement = 50;
     user_config.mouse_scroll_v_reverse = false;
     user_config.mouse_scroll_h_reverse = false;
+    user_config.scroll_v_threshold = TAKASHI_SCROLL_V_THRESHOLD;
+    user_config.scroll_h_threshold = TAKASHI_SCROLL_H_THRESHOLD;
     eeconfig_update_user(user_config.raw);
 }
 
 void keyboard_post_init_user(void) {
     user_config.raw = eeconfig_read_user();
+    if (user_config.to_clickable_movement < 5) {
+        user_config.to_clickable_movement = 50;
+    }
+    if (user_config.scroll_v_threshold < TAKASHI_SCROLL_THRESHOLD_MIN || user_config.scroll_v_threshold > TAKASHI_SCROLL_THRESHOLD_MAX) {
+        user_config.scroll_v_threshold = TAKASHI_SCROLL_V_THRESHOLD;
+    }
+    if (user_config.scroll_h_threshold < TAKASHI_SCROLL_THRESHOLD_MIN || user_config.scroll_h_threshold > TAKASHI_SCROLL_THRESHOLD_MAX) {
+        user_config.scroll_h_threshold = TAKASHI_SCROLL_H_THRESHOLD;
+    }
+    scroll_v_threshold = user_config.scroll_v_threshold;
+    scroll_h_threshold = user_config.scroll_h_threshold;
 }
 
 // クリック用のレイヤーを有効にする。　Enable layers for clicks
@@ -204,6 +245,26 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 eeconfig_update_user(user_config.raw);
             }
             return false;
+
+        case KB_SCROLL_THRESHOLD_DEC:
+            if (record->event.pressed) {
+                adjust_scroll_threshold(-TAKASHI_SCROLL_THRESHOLD_STEP);
+            }
+            return false;
+
+        case KB_SCROLL_THRESHOLD_INC:
+            if (record->event.pressed) {
+                adjust_scroll_threshold(TAKASHI_SCROLL_THRESHOLD_STEP);
+            }
+            return false;
+
+        case KBC_SAVE:
+            if (record->event.pressed) {
+                user_config.scroll_v_threshold = scroll_v_threshold;
+                user_config.scroll_h_threshold = scroll_h_threshold;
+                eeconfig_update_user(user_config.raw);
+            }
+            return true;
 
          default:
             if  (record->event.pressed) {
