@@ -44,3 +44,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define TAKASHI_SCROLL_THRESHOLD_STEP 1
 #define TAKASHI_SCROLL_THRESHOLD_MIN 1
 #define TAKASHI_SCROLL_THRESHOLD_MAX 50
+
+// Scroll output divisor: threshold crossings needed to emit 1 scroll unit.
+// Increase to slow down scroll output while keeping threshold sensitivity.
+#define TAKASHI_SCROLL_OUTPUT_DIVISOR 5
+
+// Gesture: minimum trackball movement (accumulated x or y) to register a direction.
+#define GESTURE_THRESHOLD 30

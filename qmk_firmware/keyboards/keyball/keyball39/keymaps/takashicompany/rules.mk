@@ -5,3 +5,5 @@ OLED_ENABLE = yes
 VIA_ENABLE = yes
 
 GRAVE_ESC_ENABLE = no
+
+COMBO_ENABLE = yes
