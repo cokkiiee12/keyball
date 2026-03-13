@@ -95,6 +95,9 @@ bool ime_is_kana = false;
 int16_t gesture_x;   // ジェスチャー中のX移動累積
 int16_t gesture_y;   // ジェスチャー中のY移動累積
 
+// 後方で定義される関数の前方宣言
+bool is_clickable_mode(void);
+
 // マウスレイヤー中のみ有効なコンボ
 // 2キー: J+K=左クリック、K+L=右クリック、J+L=スクロール
 // 3キー: J+K+L=ジェスチャー
